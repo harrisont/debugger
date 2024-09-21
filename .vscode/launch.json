@@ -1,0 +1,46 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Main (Debug)",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=debugger",
+                    "--package=debugger",
+                ],
+                "filter": {
+                    "name": "debugger",
+                    "kind": "bin"
+                }
+            },
+            //"args": [ "cmd.exe", "/k", "echo hello" ],
+            "args": ["C:/Users/hting/MyVisualStudioProjects/Sandbox/x64/Debug/Sandbox.exe"],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Main (Release)",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=debugger",
+                    "--package=debugger",
+                    "--release"
+                ],
+                "filter": {
+                    "name": "debugger",
+                    "kind": "bin"
+                }
+            },
+            "args": [ "cmd.exe", "/k", "echo hello" ],
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}
