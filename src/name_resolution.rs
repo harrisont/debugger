@@ -48,7 +48,7 @@ pub fn resolve_function_in_module(module: &mut Module, func: &str) -> Option<u64
     for export in module.exports.iter() {
         if let Some(export_name) = &export.name {
             if *export_name == *func {
-                match export.target {
+                return match export.target {
                     ExportTarget::Rva(export_addr) => Some(export_addr),
                     ExportTarget::Forwarder(_) => todo!(),
                 };
