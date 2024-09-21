@@ -29,12 +29,15 @@ pub mod grammar {
     #[rust_sitter::language]
     pub enum EvalExpr {
         Number(#[rust_sitter::leaf(pattern = r"(\d+|0x[0-9a-fA-F]+)", transform = parse_int)] u64),
+
+        Symbol(#[rust_sitter::leaf(pattern = r"(([a-zA-Z0-9_@#.]+!)?[a-zA-Z0-9_@#.]+)", transform = parse_symbol)] String),
+
         #[rust_sitter::prec_left(1)]
         Add(
             Box<EvalExpr>,
             #[rust_sitter::leaf(text = "+")] (),
             Box<EvalExpr>,
-        )
+        ),
     }
 
     #[rust_sitter::extra]
@@ -51,6 +54,10 @@ pub mod grammar {
         } else {
             text.parse().unwrap()
         }
+    }
+
+    fn parse_symbol(text: &str) -> String {
+        text.to_owned()
     }
 }
 

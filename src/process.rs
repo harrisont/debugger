@@ -42,4 +42,26 @@ impl Process {
         }
         None
     }
+
+    pub fn get_module_by_name_mut(&mut self, module_name: &str) -> Option<&mut Module> {
+        let mut potential_trimmed_match = None;
+
+        for module in self.module_list.iter_mut() {
+            // Exact match
+            if module.name == module_name {
+                return Some(module);
+            }
+
+            // Trimmed match: the file part of the path matches
+            // Keep looping even if we find a trimmed match, because an exact match is higher priority.
+            if potential_trimmed_match.is_none() {
+                let trimmed = module.name.rsplitn(2, '\\').next().unwrap_or(&module.name);
+                if trimmed.to_lowercase() == module_name.to_lowercase() {
+                    potential_trimmed_match = Some(module)
+                }
+            }
+        }
+
+        potential_trimmed_match
+    }
 }

@@ -21,7 +21,7 @@ mod process;
 mod registers;
 mod windows;
 
-use command::grammar::CommandExpr;
+use command::grammar::{CommandExpr, EvalExpr};
 use process::Process;
 
 #[derive(Debug)]
@@ -139,6 +139,18 @@ fn main_debugger_loop(process_handle: AutoClosedHandle) {
                 println!("[Thread: {:#x}, IP: {:#018x}]", event_context.thread.value(), thread_context.context.Rip);
             }
 
+            let mut eval_expr = |expr: Box<EvalExpr>| -> Option<u64> {
+                let mut eval_context = eval::EvalContext{ process: &mut process };
+                let result = eval::evaluate_expression(*expr, &mut eval_context);
+                match result {
+                    Ok(val) => Some(val),
+                    Err(e) => {
+                        println!("Could not evaluate expression: {e}");
+                        None
+                    }
+                }
+            };
+
             match command::read_command() {
                 CommandExpr::Help(_) | CommandExpr::HelpAlias(_) => {
                     command::print_command_help();
@@ -160,23 +172,26 @@ fn main_debugger_loop(process_handle: AutoClosedHandle) {
                     registers::display_all(thread_context.context);
                 }
                 CommandExpr::DisplayBytes(_, expr) | CommandExpr::DisplayBytesAlias(_, expr) => {
-                    let address = eval::evaluate_expression(*expr);
-                    let bytes = mem_source.read_raw_memory(address, 16);
-                    for byte in bytes {
-                        print!("{byte:02X} ");
+                    if let Some(address) = eval_expr(expr) {
+                        let bytes = mem_source.read_raw_memory(address, 16);
+                        for byte in bytes {
+                            print!("{byte:02X} ");
+                        }
+                        println!();
                     }
-                    println!();
                 }
                 CommandExpr::Evaluate(_, expr) | CommandExpr::EvaluateAlias(_, expr) => {
-                    let val = eval::evaluate_expression(*expr);
-                    println!(" = {val:#x}");
+                    if let Some(val) = eval_expr(expr) {
+                        println!(" = {val:#x}");
+                    }
                 }
                 CommandExpr::ListNearest(_, expr) | CommandExpr::ListNearestAlias(_, expr) => {
-                    let val = eval::evaluate_expression(*expr);
-                    if let Some(sym) = name_resolution::resolve_address_to_name(val, &mut process) {
-                        println!("{sym}");
-                    } else {
-                        println!("No symbol found");
+                    if let Some(val) = eval_expr(expr) {
+                        if let Some(sym) = name_resolution::resolve_address_to_name(val, &mut process) {
+                            println!("{sym}");
+                        } else {
+                            println!("No symbol found");
+                        }
                     }
                 }
                 CommandExpr::Quit(_) | CommandExpr::QuitAlias(_) => {

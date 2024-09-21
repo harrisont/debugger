@@ -5,6 +5,7 @@ use crate::{
     module::{
         Export,
         ExportTarget,
+        Module,
     },
 };
 
@@ -21,6 +22,43 @@ impl AddressMatch<'_> {
             _ => false
         }
     }
+}
+
+pub fn resolve_name_to_address(symbol: &str, process: &mut Process) -> Result<u64, String> {
+    match symbol.chars().position(|c| c == '!') {
+        None => {
+            // Search all modules
+            Err(String::from("Searching all modules for a symbol is not yet implmented"))
+        }
+        Some(pos) => {
+            let module_name = &symbol[..pos];
+            let func_name = &symbol[pos + 1..];
+            if let Some(module) = process.get_module_by_name_mut(module_name) {
+                if let Some(addr) = resolve_function_in_module(module, func_name) {
+                    Ok(addr)
+                } else {
+                    Err(format!("Could not find {func_name} in module {module_name}"))
+                }
+            } else {
+                Err(format!("Could not find module {module_name}"))
+            }
+        }
+    }
+}
+
+pub fn resolve_function_in_module(module: &mut Module, func: &str) -> Option<u64> {
+    // Search exports first and then private symbols.
+    for export in module.exports.iter() {
+        if let Some(export_name) = &export.name {
+            if *export_name == *func {
+                match export.target {
+                    ExportTarget::RVA(export_addr) => Some(export_addr),
+                    ExportTarget::Forwarder(_) => todo!(),
+                };
+            }
+        }
+    }
+    None
 }
 
 pub fn resolve_address_to_name(address: u64, process: &mut Process) -> Option<String> {
