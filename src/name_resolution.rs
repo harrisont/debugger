@@ -17,10 +17,7 @@ enum AddressMatch<'a> {
 
 impl AddressMatch<'_> {
     fn is_none(&self) -> bool {
-        match self {
-            AddressMatch::None => true,
-            _ => false
-        }
+        matches!(self, AddressMatch::None)
     }
 }
 
@@ -52,7 +49,7 @@ pub fn resolve_function_in_module(module: &mut Module, func: &str) -> Option<u64
         if let Some(export_name) = &export.name {
             if *export_name == *func {
                 match export.target {
-                    ExportTarget::RVA(export_addr) => Some(export_addr),
+                    ExportTarget::Rva(export_addr) => Some(export_addr),
                     ExportTarget::Forwarder(_) => todo!(),
                 };
             }
@@ -72,12 +69,10 @@ pub fn resolve_address_to_name(address: u64, process: &mut Process) -> Option<St
     let mut closest: AddressMatch = AddressMatch::None;
     let mut closest_addr: u64 = 0;
     for export in module.exports.iter() {
-        if let ExportTarget::RVA(export_addr) = export.target {
-            if export_addr <= address {
-                if closest.is_none() || closest_addr < export_addr {
-                    closest = AddressMatch::Export(export);
-                    closest_addr = export_addr;
-                }
+        if let ExportTarget::Rva(export_addr) = export.target {
+            if export_addr <= address && (closest.is_none() || closest_addr < export_addr) {
+                closest = AddressMatch::Export(export);
+                closest_addr = export_addr;
             }
         }
     }
@@ -109,9 +104,9 @@ pub fn resolve_address_to_name(address: u64, process: &mut Process) -> Option<St
     if let AddressMatch::Export(closest) = closest {
         let offset = address - closest_addr;
         let sym_with_offset = if offset == 0 {
-            format!("{}!{}", &module.name, closest.to_string())
+            format!("{}!{}", &module.name, closest)
         } else {
-            format!("{}!{}+{:#x}", &module.name, closest.to_string(), offset)
+            format!("{}!{}+{:#x}", &module.name, closest, offset)
         };
         return Some(sym_with_offset);
     }

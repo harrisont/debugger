@@ -26,21 +26,11 @@ impl Process {
     }
 
     pub fn _get_containing_module(&self, address: u64) -> Option<&Module> {
-        for module in self.module_list.iter() {
-            if module.contains_address(address) {
-                return Some(module);
-            }
-        }
-        None
+        self.module_list.iter().find(|&module| module.contains_address(address))
     }
 
     pub fn get_containing_module_mut(&mut self, address: u64) -> Option<&mut Module> {
-        for module in self.module_list.iter_mut() {
-            if module.contains_address(address) {
-                return Some(module);
-            }
-        }
-        None
+        self.module_list.iter_mut().find(|module| module.contains_address(address))
     }
 
     pub fn get_module_by_name_mut(&mut self, module_name: &str) -> Option<&mut Module> {
@@ -55,7 +45,7 @@ impl Process {
             // Trimmed match: the file part of the path matches
             // Keep looping even if we find a trimmed match, because an exact match is higher priority.
             if potential_trimmed_match.is_none() {
-                let trimmed = module.name.rsplitn(2, '\\').next().unwrap_or(&module.name);
+                let trimmed = module.name.rsplit('\\').next().unwrap_or(&module.name);
                 if trimmed.to_lowercase() == module_name.to_lowercase() {
                     potential_trimmed_match = Some(module)
                 }

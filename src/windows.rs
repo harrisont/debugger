@@ -3,7 +3,6 @@ use std::{
     fmt::{self, Debug},
     os::windows::ffi::{OsStrExt, OsStringExt},
     path::Path,
-    ptr,
 };
 
 use windows::{
@@ -169,7 +168,7 @@ pub fn launch_process_for_debugging(target_command_line_args: &[String]) -> Auto
             DEBUG_ONLY_THIS_PROCESS | CREATE_NEW_CONSOLE /*dwCreationFlags*/,
             None /*lpEnvironment*/,
             PCWSTR::null() /*lpCurrentDirectory*/,
-            &mut startup_info.StartupInfo,
+            &startup_info.StartupInfo,
             &mut process_info,
         )
     };
@@ -269,7 +268,7 @@ pub fn wait_for_debug_event(mem_source: &dyn MemorySource) -> (DebugEventContext
             // So instead use the file name.
             let name = Path::new(&path)
                 .file_name()
-                .and_then(|name| Some(name.to_string_lossy().to_string()));
+                .map(|name| name.to_string_lossy().to_string());
 
             let base_addr = data.lpBaseOfImage as u64;
 
@@ -284,7 +283,7 @@ pub fn wait_for_debug_event(mem_source: &dyn MemorySource) -> (DebugEventContext
             let data = unsafe { event.u.LoadDll };
             let base_addr = data.lpBaseOfDll as u64;
 
-            let name = if data.lpImageName == ptr::null_mut() {
+            let name = if data.lpImageName.is_null() {
                 None
             } else {
                 let is_wide = data.fUnicode != 0;

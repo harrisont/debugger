@@ -26,7 +26,7 @@ pub fn read_memory_array<T: Sized + Default>(
     let mut offset: usize = 0;
     while offset + element_size <= raw_bytes.len() {
         let mut item = T::default();
-        let dst: *mut u8 = unsafe { std::mem::transmute(&mut item) };
+        let dst: *mut u8 = &mut item as *mut T as *mut u8;
         let src = &raw_bytes[offset] as *const u8;
         unsafe { std::ptr::copy_nonoverlapping(src, dst, element_size) };
         data.push(item);
@@ -124,6 +124,7 @@ impl MemorySource for LiveMemorySource {
             };
             result.unwrap_or_else(|error| panic!("ReadProcessMemory failed: {error}"));
 
+            #[allow(clippy::needless_range_loop)]
             for index in 0..bytes_read {
                 let data_index = offset + index;
                 data[data_index] = Some(buffer[index]);

@@ -36,19 +36,19 @@ pub struct Export {
     pub target: ExportTarget,
 }
 
-impl ToString for Export {
-    fn to_string(&self) -> String {
+impl std::fmt::Display for Export {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if let Some(str) = &self.name {
-            str.to_string()
+            write!(f, "{}", str)
         } else {
-            format!("Ordinal{}", self.ordinal)
+            write!(f, "Ordinal{}", self.ordinal)
         }
     }
 }
 
 pub enum ExportTarget {
     /// Relative Virtual Address
-    RVA(u64),
+    Rva(u64),
 
     /// Will be forwarded to the export in a target DLL
     /// Explanation: https://devblogs.microsoft.com/oldnewthing/20060719-24/?p=30473
@@ -196,9 +196,9 @@ impl Module {
                 let target_addr = module_address + *function_addr as u64;
 
                 let name_index = ordinal_array.iter().position(|&o| o == unbiased_ordinal as u16);
-                let export_name = name_index.and_then(|idx| {
+                let export_name = name_index.map(|idx| {
                     let name_addr = module_address + name_array[idx] as u64;
-                    Some(memory::read_memory_string(memory_source, name_addr, 4096, false))
+                    memory::read_memory_string(memory_source, name_addr, 4096, false)
                 });
 
                 // An address that falls inside the export directory is actually a forwarder.
@@ -207,7 +207,7 @@ impl Module {
                     let forwarding_name = memory::read_memory_string(memory_source, target_addr, 4096, false);
                     ExportTarget::Forwarder(forwarding_name)
                 } else {
-                    ExportTarget::RVA(target_addr)
+                    ExportTarget::Rva(target_addr)
                 };
                 exports.push(Export { name: export_name, ordinal, target });
             }
