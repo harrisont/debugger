@@ -77,7 +77,7 @@ pub fn resolve_address_to_name(address: u64, process: &mut Process) -> Option<St
         }
     }
 
-    // Do a linear search for the symbol in the PDB with te closest address that comes before the address we're looking for.
+    // Do a linear search for the symbol in the PDB with the closest address that comes before the address we're looking for.
     // TODO: handle errors.
     if let Ok(pdb) = module.pdb.as_mut() {
         if let Ok(symbol_table) = pdb.global_symbols() {
