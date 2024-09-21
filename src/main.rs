@@ -59,6 +59,7 @@ fn load_module_at_address(
 fn main_debugger_loop(process_handle: AutoClosedHandle) {
     let mut thread_states = HashMap::<(ProcessId, ThreadId), ThreadState>::new();
     let mem_source = memory::make_live_memory_source(process_handle.handle());
+    // TODO: Currently this assumes that there is only a single process. Add support for multiple processes.
     let mut process = Process::new();
 
     loop {
@@ -84,25 +85,33 @@ fn main_debugger_loop(process_handle: AutoClosedHandle) {
                 }
             }
             DebugEvent::CreateThread => {
-                println!("CreateThread");
+                println!("Thread created: {:#x}", event_context.thread);
+
+                process.add_thread(event_context.thread);
 
                 // Register the thread.
                 assert!(!thread_states.contains_key(&(event_context.process, event_context.thread)));
                 thread_states.insert((event_context.process, event_context.thread), ThreadState::new());
             }
             DebugEvent::ExitThread { exit_code } => {
-                println!("ExitThread code: {exit_code} process: {process_id:#x}, thread: {thread_id:#x}", process_id = event_context.process, thread_id = event_context.thread);
+                println!("Thread {thread_id:#x} (from process: {process_id:#x}) exited with code: {exit_code}", process_id = event_context.process, thread_id = event_context.thread);
+
+                process.remove_thread(event_context.thread);
 
                 // Unregister the thread.
                 assert!(thread_states.contains_key(&(event_context.process, event_context.thread)));
                 thread_states.remove(&(event_context.process, event_context.thread));
             }
             DebugEvent::CreateProcess { name, base_addr } => {
+                println!("Process created: {:#x}", event_context.process);
+
                 // Register the thread.
                 assert!(!thread_states.contains_key(&(event_context.process, event_context.thread)));
                 thread_states.insert((event_context.process, event_context.thread), ThreadState::new());
 
                 load_module_at_address(&mut process, mem_source.as_ref(), base_addr, name);
+
+                process.add_thread(event_context.thread);
             }
             DebugEvent::ExitProcess { exit_code } => {
                 println!("ExitProcess: code: {exit_code} process: {process_id:#x}", process_id = event_context.process);

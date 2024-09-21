@@ -1,16 +1,19 @@
 use crate::{
     memory::MemorySource,
     module::Module,
+    windows::ThreadId,
 };
 
 pub struct Process {
-    module_list: Vec<Module>,
+    modules: Vec<Module>,
+    threads: Vec<ThreadId>,
 }
 
 impl Process {
     pub fn new() -> Process {
         Process {
-            module_list: Vec::new(),
+            modules: Vec::new(),
+            threads: Vec::new(),
         }
     }
 
@@ -21,22 +24,34 @@ impl Process {
         memory_source: &dyn MemorySource
     ) -> Result<&Module, String> {
         let module = Module::from_memory_view(address, name, memory_source)?;
-        self.module_list.push(module);
-        Ok(self.module_list.last().unwrap())
+        self.modules.push(module);
+        Ok(self.modules.last().unwrap())
+    }
+
+    pub fn add_thread(&mut self, thread: ThreadId) {
+        self.threads.push(thread);
+    }
+
+    pub fn remove_thread(&mut self, thread: ThreadId) {
+        self.threads.retain(|x| *x != thread);
+    }
+
+    pub fn _iterate_threads(&self) -> core::slice::Iter<'_, ThreadId> {
+        self.threads.iter()
     }
 
     pub fn _get_containing_module(&self, address: u64) -> Option<&Module> {
-        self.module_list.iter().find(|&module| module.contains_address(address))
+        self.modules.iter().find(|&module| module.contains_address(address))
     }
 
     pub fn get_containing_module_mut(&mut self, address: u64) -> Option<&mut Module> {
-        self.module_list.iter_mut().find(|module| module.contains_address(address))
+        self.modules.iter_mut().find(|module| module.contains_address(address))
     }
 
     pub fn get_module_by_name_mut(&mut self, module_name: &str) -> Option<&mut Module> {
         let mut potential_trimmed_match = None;
 
-        for module in self.module_list.iter_mut() {
+        for module in self.modules.iter_mut() {
             // Exact match
             if module.name == module_name {
                 return Some(module);
