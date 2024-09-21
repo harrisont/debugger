@@ -4,7 +4,7 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "rust: cargo build debug",
+            "label": "build debug",
             "type": "cargo",
             "command": "build",
             "problemMatcher": [
@@ -12,11 +12,11 @@
             ],
             "group": {
                 "kind": "build",
-                "isDefault": true,
+                "isDefault": true
             }
         },
         {
-            "label": "rust: cargo build release",
+            "label": "build release",
             "type": "cargo",
             "command": "build",
             "args": [
@@ -26,6 +26,18 @@
                 "$rustc"
             ],
             "group": "build"
+        },
+        {
+            "label": "test debug",
+            "type": "cargo",
+            "command": "test",
+            "problemMatcher": [
+                "$rustc"
+            ],
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            }
         }
     ]
 }
