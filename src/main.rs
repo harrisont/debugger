@@ -12,6 +12,7 @@ use windows::{
     ProcessId,
 };
 
+mod breakpoint;
 mod command;
 mod eval;
 mod memory;
@@ -21,6 +22,7 @@ mod process;
 mod registers;
 mod windows;
 
+use breakpoint::{BreakpointId, BreakpointManager};
 use command::grammar::{CommandExpr, EvalExpr};
 use process::Process;
 
@@ -61,6 +63,7 @@ fn main_debugger_loop(process_handle: AutoClosedHandle) {
     let mem_source = memory::make_live_memory_source(process_handle.handle());
     // TODO: Currently this assumes that there is only a single process. Add support for multiple processes.
     let mut process = Process::new();
+    let mut breakpoints = BreakpointManager::new();
 
     loop {
         let (event_context, debug_event) = windows::wait_for_debug_event(mem_source.as_ref());
@@ -142,10 +145,10 @@ fn main_debugger_loop(process_handle: AutoClosedHandle) {
         while !continue_execution {
             if let Some(sym) = name_resolution::resolve_address_to_name(thread_context.context.Rip, &mut process) {
                 // Print the thread and symbol.
-                println!("Thread: {:#x} {sym}", event_context.thread.value());
+                println!("Thread: {:#x} {sym}", event_context.thread);
             } else {
                 // Print the thread and instruction pointer.
-                println!("[Thread: {:#x}, IP: {:#018x}]", event_context.thread.value(), thread_context.context.Rip);
+                println!("[Thread: {:#x}, IP: {:#018x}]", event_context.thread, thread_context.context.Rip);
             }
 
             let mut eval_expr = |expr: Box<EvalExpr>| -> Option<u64> {
@@ -202,6 +205,19 @@ fn main_debugger_loop(process_handle: AutoClosedHandle) {
                             println!("No symbol found");
                         }
                     }
+                }
+                CommandExpr::AddBreakpoint(_, expr) | CommandExpr::AddBreakpointAlias(_, expr) => {
+                    if let Some(addr) = eval_expr(expr) {
+                        breakpoints.add_breakpoint(addr);
+                    }
+                }
+                CommandExpr::RemoveBreakpoint(_, expr) | CommandExpr::RemoveBreakpointAlias(_, expr) => {
+                    if let Some(id) = eval_expr(expr) {
+                        breakpoints.remove_breakpoint(BreakpointId(id as u32));
+                    }
+                }
+                CommandExpr::ListBreakpoint(_) | CommandExpr::ListBreakpointAlias(_) => {
+                    breakpoints.list_breakpoints(&mut process);
                 }
                 CommandExpr::Quit(_) | CommandExpr::QuitAlias(_) => {
                     // The process will be terminated since we didn't detach.

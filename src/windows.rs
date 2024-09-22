@@ -23,15 +23,9 @@ pub const EXCEPTION_CODE_SINGLE_STEP: NTSTATUS = EXCEPTION_SINGLE_STEP;
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct ThreadId(u32);
 
-impl ThreadId {
-    pub fn value(&self) -> u32 {
-        self.0
-    }
-}
-
 impl fmt::Display for ThreadId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
+        fmt::Display::fmt(&self.0, f)
     }
 }
 
@@ -50,15 +44,9 @@ impl fmt::UpperHex for ThreadId {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct ProcessId(u32);
 
-impl ProcessId {
-    pub fn value(&self) -> u32 {
-        self.0
-    }
-}
-
 impl fmt::Display for ProcessId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
+        fmt::Display::fmt(&self.0, f)
     }
 }
 
@@ -331,8 +319,8 @@ impl DebugContinueStatus {
 pub fn continue_debug_event(context: DebugEventContext, continue_status: DebugContinueStatus) {
     let ret = unsafe {
         ContinueDebugEvent(
-            context.process.value(),
-            context.thread.value(),
+            context.process.0,
+            context.thread.0,
             continue_status.get_win32_value(),
         )
     };

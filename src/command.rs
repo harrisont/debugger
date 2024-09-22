@@ -14,6 +14,12 @@ pub mod grammar {
         StepAlias(#[rust_sitter::leaf(text = "s")] ()),
         Continue(#[rust_sitter::leaf(text = "continue")] ()),
         ContinueAlias(#[rust_sitter::leaf(text = "c")] ()),
+        AddBreakpoint(#[rust_sitter::leaf(text = "breakpoint-add")] (), Box<EvalExpr>),
+        AddBreakpointAlias(#[rust_sitter::leaf(text = "ba")] (), Box<EvalExpr>),
+        RemoveBreakpoint(#[rust_sitter::leaf(text = "breakpoint-remove")] (), Box<EvalExpr>),
+        RemoveBreakpointAlias(#[rust_sitter::leaf(text = "br")] (), Box<EvalExpr>),
+        ListBreakpoint(#[rust_sitter::leaf(text = "breakpoint-list")] ()),
+        ListBreakpointAlias(#[rust_sitter::leaf(text = "bl")] ()),
         DisplayRegisters(#[rust_sitter::leaf(text = "registers")] ()),
         DisplayRegistersAlias(#[rust_sitter::leaf(text = "r")] ()),
         DisplayBytes(#[rust_sitter::leaf(text = "display-bytes")] (), Box<EvalExpr>),
@@ -118,6 +124,9 @@ pub fn print_command_help() {
     display-bytes (db): Display data at a memory location. For example, `display-bytes 0x123`.
     eval (?): Add addresses. For example, `eval 0x123 + 10`.
     list-nearest (ln): List the symbol nearest to the address. For example, `list-nearest 0x123`.
+    breakpoint-add (ba): Add a breakpoint. For example, `breakpoint-add ntdll.dll!RtlUserThreadStart`.
+    breakpoint-remove (br): Remove a breakpoint. For example, `breakpoint-remove ntdll.dll!RtlUserThreadStart`.
+    breakpoint-list (bl): List breakpoints.
     quit (q): Quit.");
 }
 
