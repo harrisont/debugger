@@ -167,7 +167,7 @@ pub fn launch_process_for_debugging(target_command_line_args: &[String]) -> Auto
     AutoClosedHandle(process_info.hProcess)
 }
 
-// Required because `windows_sys::Win32::System::Diagnostics::Debug::CONTEXT` has a bug where is needs to be aligned but is not.
+// Required because `windows::Win32::System::Diagnostics::Debug::CONTEXT` has a bug where is needs to be aligned but is not.
 // The issues is tracked by https://github.com/microsoft/win32metadata/issues/1044
 // Once that is fixed this can be deleted and we can use `CONTEXT` direclty.
 #[repr(align(16))]
