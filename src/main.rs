@@ -22,7 +22,7 @@ mod process;
 mod registers;
 mod windows;
 
-use breakpoint::{BreakpointId, BreakpointManager};
+use breakpoint::BreakpointManager;
 use command::grammar::{CommandExpr, EvalExpr};
 use process::Process;
 
@@ -212,8 +212,8 @@ fn main_debugger_loop(process_handle: AutoClosedHandle) {
                     }
                 }
                 CommandExpr::RemoveBreakpoint(_, expr) | CommandExpr::RemoveBreakpointAlias(_, expr) => {
-                    if let Some(id) = eval_expr(expr) {
-                        breakpoints.remove_breakpoint(BreakpointId(id as u32));
+                    if let Some(addr) = eval_expr(expr) {
+                        breakpoints.remove_breakpoint(addr);
                     }
                 }
                 CommandExpr::ListBreakpoint(_) | CommandExpr::ListBreakpointAlias(_) => {
