@@ -1,7 +1,7 @@
 use crate::{
     memory::MemorySource,
     module::Module,
-    windows::ThreadId,
+    windows_wrapper::ThreadId,
 };
 
 pub struct Process {

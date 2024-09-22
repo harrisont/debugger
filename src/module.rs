@@ -4,12 +4,21 @@ use std::{
     mem::size_of,
 };
 
-use windows::Win32::System::{
-    SystemServices::*,
-    Diagnostics::Debug::*,
-};
-
 use pdb::PDB;
+
+use windows::Win32::System::{
+    Diagnostics::Debug::{
+        IMAGE_DEBUG_DIRECTORY,
+        IMAGE_DEBUG_TYPE_CODEVIEW,
+        IMAGE_DIRECTORY_ENTRY_DEBUG,
+        IMAGE_DIRECTORY_ENTRY_EXPORT,
+        IMAGE_NT_HEADERS64,
+    },
+    SystemServices::{
+        IMAGE_DOS_HEADER,
+        IMAGE_EXPORT_DIRECTORY,
+    },
+};
 
 use crate::memory::{*, self};
 

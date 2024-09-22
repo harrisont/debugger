@@ -1,8 +1,8 @@
 use core::ffi::c_void;
 
 use windows::{
-    Win32::Foundation,
-    Win32::System::Diagnostics::Debug::*,
+    Win32::Foundation::HANDLE,
+    Win32::System::Diagnostics::Debug::ReadProcessMemory,
 };
 
 pub trait MemorySource {
@@ -95,10 +95,10 @@ pub fn read_memory_string_indirect(
 
 // Could have other memory sources in the future, like for dump files.
 struct LiveMemorySource {
-    process: Foundation::HANDLE,
+    process: HANDLE,
 }
 
-pub fn make_live_memory_source(process: Foundation::HANDLE) -> Box<dyn MemorySource> {
+pub fn make_live_memory_source(process: HANDLE) -> Box<dyn MemorySource> {
     Box::new(LiveMemorySource { process })
 }
 

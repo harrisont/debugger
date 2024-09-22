@@ -4,7 +4,7 @@ use std::{
 };
 
 use memory::MemorySource;
-use windows::{
+use windows_wrapper::{
     AutoClosedHandle,
     DebugContinueStatus,
     DebugEvent,
@@ -20,7 +20,7 @@ mod module;
 mod name_resolution;
 mod process;
 mod registers;
-mod windows;
+mod windows_wrapper;
 
 use breakpoint::BreakpointManager;
 use command::grammar::{CommandExpr, EvalExpr};
@@ -66,7 +66,7 @@ fn main_debugger_loop(process_handle: AutoClosedHandle) {
     let mut breakpoints = BreakpointManager::new();
 
     loop {
-        let (event_context, debug_event) = windows::wait_for_debug_event(mem_source.as_ref());
+        let (event_context, debug_event) = windows_wrapper::wait_for_debug_event(mem_source.as_ref());
         let mut continue_status = DebugContinueStatus::Continue;
 
         match debug_event {
@@ -80,7 +80,7 @@ fn main_debugger_loop(process_handle: AutoClosedHandle) {
                 // Assume that the first EXCEPTION_SINGLE_STEP exception from a thread after we step (via trap) is from our trap.
                 let thread_state = thread_states.get_mut(&(event_context.process, event_context.thread))
                     .unwrap_or_else(|| panic!("Exception code {code_num:#x} ({chance_string}) for unknown process {process_id:#x}, thread {thread_id:#x}", code_num = code.0, process_id = event_context.process, thread_id = event_context.thread));
-                if thread_state.expect_step_exception && code == windows::EXCEPTION_CODE_SINGLE_STEP {
+                if thread_state.expect_step_exception && code == windows_wrapper::EXCEPTION_CODE_SINGLE_STEP {
                     thread_state.expect_step_exception = false;
                 } else {
                     println!("Exception code {code_num:#x} ({chance_string})", code_num = code.0);
@@ -138,8 +138,8 @@ fn main_debugger_loop(process_handle: AutoClosedHandle) {
             DebugEvent::Rip { error, info_type } => println!("RipEvent: error: {error}, type: {}", info_type.0),
         }
 
-        let thread = windows::open_thread(&event_context.thread);
-        let mut thread_context = windows::get_thread_context(&thread);
+        let thread = windows_wrapper::open_thread(&event_context.thread);
+        let mut thread_context = windows_wrapper::get_thread_context(&thread);
 
         let mut continue_execution = false;
         while !continue_execution {
@@ -169,8 +169,8 @@ fn main_debugger_loop(process_handle: AutoClosedHandle) {
                 }
                 CommandExpr::Step(_) | CommandExpr::StepAlias(_) => {
                     // Set the trap flag context, which will throw an EXCEPTION_SINGLE_STEP exception after executing the next instruction.
-                    thread_context.context.EFlags |= windows::TRAP_FLAG;
-                    windows::set_thread_context(&thread, &thread_context.context);
+                    thread_context.context.EFlags |= windows_wrapper::TRAP_FLAG;
+                    windows_wrapper::set_thread_context(&thread, &thread_context.context);
 
                     let thread_state = thread_states.get_mut(&(event_context.process, event_context.thread))
                         .unwrap_or_else(|| panic!("Cannot step because missing thread state for process {process_id:#x}, thread {thread_id:#x}", process_id = event_context.process, thread_id = event_context.thread));
@@ -226,12 +226,12 @@ fn main_debugger_loop(process_handle: AutoClosedHandle) {
             }
         }
 
-        windows::continue_debug_event(event_context, continue_status);
+        windows_wrapper::continue_debug_event(event_context, continue_status);
     }
 }
 
 fn launch_and_debug_process(target_command_line_args: &[String]) {
-    let process = windows::launch_process_for_debugging(target_command_line_args);
+    let process = windows_wrapper::launch_process_for_debugging(target_command_line_args);
     main_debugger_loop(process);
 }
 
