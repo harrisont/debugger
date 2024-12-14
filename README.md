@@ -1,6 +1,6 @@
 # debugger
 
-A Windows executable debugger written in Rust.
+A Windows executable debugger written in Rust based off of Tim Misiak's [Writing a Debugger From Scratch blog posts](https://www.timdbg.com/posts/writing-a-debugger-from-scratch-part-1/)..
 
 To run:
 ```shell
@@ -11,8 +11,6 @@ For example:
 ```shell
 cargo run -- cmd.exe /k "echo hello"
 ```
-
-Based off of Tim Misiak's [Writing a Debugger From Scratch blog posts](https://www.timdbg.com/posts/writing-a-debugger-from-scratch-part-1/).
 
 ## References
 
