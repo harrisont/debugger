@@ -1,6 +1,6 @@
 # debugger
 
-A Windows executable debugger written in Rust based off of Tim Misiak's [Writing a Debugger From Scratch blog posts](https://www.timdbg.com/posts/writing-a-debugger-from-scratch-part-1/)..
+A Windows executable debugger written in Rust based off of Tim Misiak's [Writing a Debugger From Scratch blog posts](https://www.timdbg.com/posts/writing-a-debugger-from-scratch-part-1/).
 
 To run:
 ```shell
