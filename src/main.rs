@@ -206,17 +206,17 @@ fn main_debugger_loop(process_handle: AutoClosedHandle) {
                         }
                     }
                 }
-                CommandExpr::AddBreakpoint(_, expr) | CommandExpr::AddBreakpointAlias(_, expr) => {
+                CommandExpr::BreakpointAdd(_, expr) | CommandExpr::BreakpointAddAlias(_, expr) => {
                     if let Some(addr) = eval_expr(expr) {
                         breakpoints.add_breakpoint(addr);
                     }
                 }
-                CommandExpr::RemoveBreakpoint(_, expr) | CommandExpr::RemoveBreakpointAlias(_, expr) => {
+                CommandExpr::BreakpointRemove(_, expr) | CommandExpr::BreakpointRemoveAlias(_, expr) => {
                     if let Some(addr) = eval_expr(expr) {
                         breakpoints.remove_breakpoint(addr);
                     }
                 }
-                CommandExpr::ListBreakpoint(_) | CommandExpr::ListBreakpointAlias(_) => {
+                CommandExpr::BreakpointList(_) | CommandExpr::BreakpointListAlias(_) => {
                     breakpoints.list_breakpoints(&mut process);
                 }
                 CommandExpr::Quit(_) | CommandExpr::QuitAlias(_) => {
