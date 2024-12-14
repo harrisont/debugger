@@ -145,10 +145,10 @@ fn main_debugger_loop(process_handle: AutoClosedHandle) {
         while !continue_execution {
             if let Some(sym) = name_resolution::resolve_address_to_name(thread_context.context.Rip, &mut process) {
                 // Print the thread and symbol.
-                println!("Thread: {:#x} {sym}", event_context.thread);
+                println!("\nThread: {:#x} {sym}", event_context.thread);
             } else {
                 // Print the thread and instruction pointer.
-                println!("[Thread: {:#x}, IP: {:#018x}]", event_context.thread, thread_context.context.Rip);
+                println!("\nThread: {:#x}, IP: {:#018x}]", event_context.thread, thread_context.context.Rip);
             }
 
             let mut eval_expr = |expr: Box<EvalExpr>| -> Option<u64> {

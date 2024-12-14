@@ -133,7 +133,7 @@ pub fn print_command_help() {
 pub fn read_command() -> grammar::CommandExpr {
     let stdin = std::io::stdin();
     loop {
-        print!("\n> ");
+        print!("> ");
         std::io::stdout().flush().unwrap();
 
         let mut input = String::new();
