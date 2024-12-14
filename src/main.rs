@@ -193,13 +193,13 @@ fn main_debugger_loop(process_handle: AutoClosedHandle) {
                     }
                 }
                 CommandExpr::Evaluate(_, expr) | CommandExpr::EvaluateAlias(_, expr) => {
-                    if let Some(val) = eval_expr(expr) {
-                        println!(" = {val:#x}");
+                    if let Some(address) = eval_expr(expr) {
+                        println!(" = {address:#x}");
                     }
                 }
                 CommandExpr::ListNearest(_, expr) | CommandExpr::ListNearestAlias(_, expr) => {
-                    if let Some(val) = eval_expr(expr) {
-                        if let Some(sym) = name_resolution::resolve_address_to_name(val, &mut process) {
+                    if let Some(address) = eval_expr(expr) {
+                        if let Some(sym) = name_resolution::resolve_address_to_name(address, &mut process) {
                             println!("{sym}");
                         } else {
                             println!("No symbol found");
@@ -207,13 +207,13 @@ fn main_debugger_loop(process_handle: AutoClosedHandle) {
                     }
                 }
                 CommandExpr::BreakpointAdd(_, expr) | CommandExpr::BreakpointAddAlias(_, expr) => {
-                    if let Some(addr) = eval_expr(expr) {
-                        breakpoints.add_breakpoint(addr);
+                    if let Some(address) = eval_expr(expr) {
+                        breakpoints.add_breakpoint(address);
                     }
                 }
                 CommandExpr::BreakpointRemove(_, expr) | CommandExpr::BreakpointRemoveAlias(_, expr) => {
-                    if let Some(addr) = eval_expr(expr) {
-                        breakpoints.remove_breakpoint(addr);
+                    if let Some(address) = eval_expr(expr) {
+                        breakpoints.remove_breakpoint(address);
                     }
                 }
                 CommandExpr::BreakpointList(_) | CommandExpr::BreakpointListAlias(_) => {
