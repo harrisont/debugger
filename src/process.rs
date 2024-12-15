@@ -36,7 +36,7 @@ impl Process {
         self.threads.retain(|x| *x != thread);
     }
 
-    pub fn _iterate_threads(&self) -> core::slice::Iter<'_, ThreadId> {
+    pub fn iterate_threads(&self) -> core::slice::Iter<'_, ThreadId> {
         self.threads.iter()
     }
 

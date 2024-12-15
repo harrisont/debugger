@@ -67,6 +67,9 @@ fn main_debugger_loop(process_handle: AutoClosedHandle) {
 
     loop {
         let (event_context, debug_event) = windows_wrapper::wait_for_debug_event(mem_source.as_ref());
+        let thread = windows_wrapper::open_thread(&event_context.thread);
+        let mut thread_context = windows_wrapper::get_thread_context(&thread);
+
         let mut continue_status = DebugContinueStatus::Continue;
 
         match debug_event {
@@ -82,6 +85,13 @@ fn main_debugger_loop(process_handle: AutoClosedHandle) {
                     .unwrap_or_else(|| panic!("Exception code {code_num:#x} ({chance_string}) for unknown process {process_id:#x}, thread {thread_id:#x}", code_num = code.0, process_id = event_context.process, thread_id = event_context.thread));
                 if thread_state.expect_step_exception && code == windows_wrapper::EXCEPTION_CODE_SINGLE_STEP {
                     thread_state.expect_step_exception = false;
+                } else if let Some(breakpoint_index) = breakpoints.was_breakpoint_hit(&thread_context) {
+                    // When the CPU tries to execute an instruction that is marked with a debug register,
+                    // it generates a debug exception (#DB) as a [fault](https://wiki.osdev.org/Exceptions).
+                    //
+                    // It's important to not that it's a fault and not a trap.
+                    // That's because a fault exception triggers _before_ the instruction executes.
+                    println!("Breakpoint {} hit", breakpoint_index);
                 } else {
                     println!("Exception code {code_num:#x} ({chance_string})", code_num = code.0);
                     continue_status = DebugContinueStatus::ExceptionNotHandled;
@@ -137,9 +147,6 @@ fn main_debugger_loop(process_handle: AutoClosedHandle) {
             }
             DebugEvent::Rip { error, info_type } => println!("RipEvent: error: {error}, type: {}", info_type.0),
         }
-
-        let thread = windows_wrapper::open_thread(&event_context.thread);
-        let mut thread_context = windows_wrapper::get_thread_context(&thread);
 
         let mut continue_execution = false;
         while !continue_execution {
@@ -225,6 +232,8 @@ fn main_debugger_loop(process_handle: AutoClosedHandle) {
                 }
             }
         }
+
+        breakpoints.apply_breakpoints(&mut process, event_context.thread);
 
         windows_wrapper::continue_debug_event(event_context, continue_status);
     }

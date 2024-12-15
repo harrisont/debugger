@@ -1,11 +1,8 @@
 use crate::{
     name_resolution,
     process::Process,
+    windows_wrapper::{self, Breakpoint},
 };
-
-struct Breakpoint {
-    address: u64,
-}
 
 pub struct BreakpointManager {
     // TODO: determine if it's better to use a HashMap instead.
@@ -35,5 +32,17 @@ impl BreakpointManager {
                 println!("{:#018x}", breakpoint.address);
             }
         }
+    }
+
+    pub fn apply_breakpoints(
+        &mut self,
+        process: &mut Process,
+        resume_thread_id: windows_wrapper::ThreadId,
+    ) {
+        windows_wrapper::apply_breakpoints(&self.breakpoints, process, resume_thread_id)
+    }
+
+    pub fn was_breakpoint_hit(&self, thread_context: &windows_wrapper::AlignedContext) -> Option<u32> {
+        windows_wrapper::was_breakpoint_hit(self.breakpoints.len(), thread_context)
     }
 }

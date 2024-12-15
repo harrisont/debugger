@@ -15,6 +15,7 @@ use windows::{
 };
 
 use crate::memory::{self, MemorySource};
+use crate::process::Process;
 
 pub const TRAP_FLAG: u32 = 1 << 8;
 
@@ -49,7 +50,6 @@ impl fmt::Display for ProcessId {
         fmt::Display::fmt(&self.0, f)
     }
 }
-
 
 impl fmt::LowerHex for ProcessId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -134,7 +134,7 @@ pub fn open_thread(thread_id: &ThreadId) -> AutoClosedHandle {
     };
     match handle {
         Ok(h) => AutoClosedHandle(h),
-        Err(error) => panic!("CloseHandle failed: {error}"),
+        Err(error) => panic!("OpenThread failed: {error}"),
     }
 }
 
@@ -167,7 +167,7 @@ pub fn launch_process_for_debugging(target_command_line_args: &[String]) -> Auto
     AutoClosedHandle(process_info.hProcess)
 }
 
-// Required because `windows::Win32::System::Diagnostics::Debug::CONTEXT` has a bug where is needs to be aligned but is not.
+// Required because `windows::Win32::System::Diagnostics::Debug::CONTEXT` has a bug where it needs to be aligned but is not.
 // The issues is tracked by https://github.com/microsoft/win32metadata/issues/1044
 // Once that is fixed this can be deleted and we can use `CONTEXT` direclty.
 #[repr(align(16))]
@@ -185,7 +185,8 @@ pub fn get_thread_id(thread_handle: HANDLE) -> ThreadId {
 
 pub fn get_thread_context(thread: &AutoClosedHandle) -> AlignedContext {
     let mut ctx: AlignedContext = unsafe { std::mem::zeroed() };
-    ctx.context.ContextFlags = CONTEXT_ALL_ARM64;
+    // Currently only supports AMD64 architecture, but could change to make this variable instead of constant.
+    ctx.context.ContextFlags = CONTEXT_ALL_AMD64;
 
     let ret = unsafe { GetThreadContext(thread.handle(), &mut ctx.context) };
     ret.unwrap_or_else(|error| panic!("GetThreadContext failed: {error}"));
@@ -334,4 +335,131 @@ pub fn get_final_path_name_by_handle(handle: HANDLE) -> String {
         panic!("GetFinalPathNameByHandleW failed: {}", get_last_platform_error_message());
     }
     OsString::from_wide(&buffer[0..len]).to_string_lossy().to_string()
+}
+
+// Bit offsets within the DR7 debug register.
+// The index is the index of the hardware breakpoint.
+const DR7_LEN_BIT: [usize; 4] = [19, 23, 27, 31];
+const DR7_RW_BIT: [usize; 4] = [17, 21, 25, 29];
+const DR7_LE_BIT: [usize; 4] = [0, 2, 4, 6];
+
+// The size in bits of the `LEN` field (length of the breakpoint) of the DR7 debug register.
+const DR7_LEN_SIZE: usize = 2;
+// The size in bits of the `RW` field (read/write access type) of the DR7 debug register.
+const DR7_RW_SIZE: usize = 2;
+
+// Each bit in DR6 corresponds to if the breakpint is enabled or not.
+// The index is the index of the breakpoint.
+const DR6_B_BIT: [usize; 4] = [0, 1, 2, 3];
+
+const EFLAG_RF: usize = 16;
+
+pub struct Breakpoint {
+    pub address: u64,
+}
+
+/// Set a value at a specific bit offset.
+fn set_bits<T: num_traits::int::PrimInt>(
+    val: &mut T,
+    set_val: T,
+    start_bit: usize,
+    bit_count: usize
+) {
+    // First, mask out the relevant bits.
+    let max_bits: usize = std::mem::size_of::<T>() * 8;
+    let mask: T = T::max_value() << (max_bits - bit_count);
+    let mask: T = mask >> (max_bits - 1 - start_bit);
+    let inverted_mask = !mask;
+
+    *val = *val & inverted_mask;
+    *val = *val | (set_val << (start_bit + 1 - bit_count));
+}
+
+// Return if the bit a the given index is set.
+fn get_bit<T: num_traits::int::PrimInt>(
+    val: T,
+    bit_index: usize
+) -> bool {
+    let mask = T::one() << bit_index;
+    let masked_val = val & mask;
+    masked_val != T::zero()
+}
+
+pub fn apply_breakpoints(
+    breakpoints: &[Breakpoint],
+    process: &mut Process,
+    resume_thread_id: ThreadId
+) {
+    // There are 2 types of breakpoints: software and hardware.
+    // Hardware breakpoints are simpler, so using those for now.
+    //
+    // On x86/AMD64 processors, the harware breakpoints are controlled via the [Debug Registers](https://wiki.osdev.org/CPU_Registers_x86-64#Debug_Registers):
+    // * These are 4 hardware breakpoints.
+    // * Debug registers ("DR") DR0 through DR3 specify the address of the breakpoint.
+    // * Register DR6 is a status register to determien when a breakpoint is hit.
+    // * Register DR7 is a control register to speicfy the attributes of each hardware breakpoint.
+    //
+    // Debug registers are maintained for each thread separately.
+    // So theoretically we could set different breakpoints for each thread, but don't support that for now.
+
+    for thread_id in process.iterate_threads() {
+        let thread = open_thread(thread_id);
+        let mut ctx = get_thread_context(&thread);
+
+        // x86/AMD64 processors have a limit of 4 hardware breakpoints.
+        for idx in 0..4 {
+            if breakpoints.len() > idx {
+                // The DR7_* variables are a set of constants with the correct offsets and sizes for each field of DR7.
+
+                // `LEN` must be set to 0 for instruction breakpoints (in contrast with data breakpoints).
+                set_bits(&mut ctx.context.Dr7, 0, DR7_LEN_BIT[idx], DR7_LEN_SIZE);
+
+                // `RW` value of 0 means "break on instruction execution".
+                // * A value of 1 means to break on read.
+                // * A value of 2 means to break on write.
+                // * A value of 3 means to break on read/write.
+                set_bits(&mut ctx.context.Dr7, 0, DR7_RW_BIT[idx], DR7_RW_SIZE);
+
+                // `LE` (local enable) value of 1 means that the breakpoint is enabled.
+                set_bits(&mut ctx.context.Dr7, 1, DR7_LE_BIT[idx], 1);
+
+                // Debug registers ("DR") DR0 through DR3 specify the address of the breakpoint.
+                match idx {
+                    0 => ctx.context.Dr0 = breakpoints[idx].address,
+                    1 => ctx.context.Dr1 = breakpoints[idx].address,
+                    2 => ctx.context.Dr2 = breakpoints[idx].address,
+                    3 => ctx.context.Dr3 = breakpoints[idx].address,
+                    _ => (),
+                }
+            } else {
+                // Disable unused breakpoints.
+                //
+                // Assume that we own all breakpoints.
+                // This will cause problems with programs that expect to control their own debug registers.
+                set_bits(&mut ctx.context.Dr7, 0, DR7_LE_BIT[idx], 1);
+                break;
+            }
+        }
+
+        // Prevent the current thread from hitting a breakpoint on the current instruction.
+        //
+        // Technically we only need to do this when a breakpoint was hit, but it's simpler to always do so.
+        if *thread_id == resume_thread_id {
+            set_bits(&mut ctx.context.EFlags, 1, EFLAG_RF, 1);
+        }
+
+        set_thread_context(&thread, &ctx.context);
+    }
+}
+
+pub fn was_breakpoint_hit(
+    num_breakpoints: usize,
+    thread_context: &AlignedContext
+) -> Option<u32> {
+    for (idx, dr6_b_bit) in DR6_B_BIT.iter().enumerate().take(num_breakpoints) {
+        if get_bit(thread_context.context.Dr6, *dr6_b_bit) {
+            return Some(idx as u32);
+        }
+    }
+    None
 }
